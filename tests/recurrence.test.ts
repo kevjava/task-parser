@@ -129,6 +129,63 @@ describe('parseRecurrence', () => {
       expect(() => parseRecurrence(['after', 'invalid'], referenceDate)).toThrow(ParseError);
     });
   });
+
+  describe('time-of-day patterns', () => {
+    it('should parse "daily 09:00"', () => {
+      const result = parseRecurrence(['daily', '09:00', 'task'], referenceDate);
+      expect(result?.pattern.type).toBe(RecurrenceType.DAILY);
+      expect(result?.pattern.timeOfDay).toBe('09:00');
+      expect(result?.tokensConsumed).toBe(2);
+    });
+
+    it('should parse "weekly 14:30"', () => {
+      const result = parseRecurrence(['weekly', '14:30', 'task'], referenceDate);
+      expect(result?.pattern.type).toBe(RecurrenceType.WEEKLY);
+      expect(result?.pattern.timeOfDay).toBe('14:30');
+      expect(result?.tokensConsumed).toBe(2);
+    });
+
+    it('should parse "every monday 16:00"', () => {
+      const result = parseRecurrence(['every', 'monday', '16:00', 'task'], referenceDate);
+      expect(result?.pattern.type).toBe(RecurrenceType.WEEKLY);
+      expect(result?.pattern.dayOfWeek).toBe(1);
+      expect(result?.pattern.timeOfDay).toBe('16:00');
+      expect(result?.tokensConsumed).toBe(3);
+    });
+
+    it('should parse "every 2w 10:00"', () => {
+      const result = parseRecurrence(['every', '2w', '10:00', 'task'], referenceDate);
+      expect(result?.pattern.type).toBe(RecurrenceType.INTERVAL);
+      expect(result?.pattern.interval).toBe(2);
+      expect(result?.pattern.unit).toBe('weeks');
+      expect(result?.pattern.timeOfDay).toBe('10:00');
+      expect(result?.tokensConsumed).toBe(3);
+    });
+
+    it('should parse "after 1w 09:00"', () => {
+      const result = parseRecurrence(['after', '1w', '09:00', 'task'], referenceDate);
+      expect(result?.pattern.mode).toBe(RecurrenceMode.COMPLETION);
+      expect(result?.pattern.interval).toBe(1);
+      expect(result?.pattern.timeOfDay).toBe('09:00');
+      expect(result?.tokensConsumed).toBe(3);
+    });
+
+    it('should normalize single-digit hours', () => {
+      const result = parseRecurrence(['daily', '9:00', 'task'], referenceDate);
+      expect(result?.pattern.timeOfDay).toBe('09:00');
+    });
+
+    it('should handle 24-hour format', () => {
+      const result = parseRecurrence(['daily', '23:59', 'task'], referenceDate);
+      expect(result?.pattern.timeOfDay).toBe('23:59');
+    });
+
+    it('should not consume non-time tokens', () => {
+      const result = parseRecurrence(['daily', 'task', 'description'], referenceDate);
+      expect(result?.pattern.timeOfDay).toBeUndefined();
+      expect(result?.tokensConsumed).toBe(1);
+    });
+  });
 });
 
 describe('formatRecurrence', () => {
@@ -170,5 +227,42 @@ describe('formatRecurrence', () => {
       interval: 30,
       unit: 'days',
     })).toBe('after 30d');
+  });
+
+  it('should format daily with time', () => {
+    expect(formatRecurrence({
+      mode: RecurrenceMode.CALENDAR,
+      type: RecurrenceType.DAILY,
+      timeOfDay: '09:00',
+    })).toBe('daily 09:00');
+  });
+
+  it('should format weekly with day and time', () => {
+    expect(formatRecurrence({
+      mode: RecurrenceMode.CALENDAR,
+      type: RecurrenceType.WEEKLY,
+      dayOfWeek: 1,
+      timeOfDay: '16:00',
+    })).toBe('every monday 16:00');
+  });
+
+  it('should format interval with time', () => {
+    expect(formatRecurrence({
+      mode: RecurrenceMode.CALENDAR,
+      type: RecurrenceType.INTERVAL,
+      interval: 2,
+      unit: 'weeks',
+      timeOfDay: '10:00',
+    })).toBe('every 2w 10:00');
+  });
+
+  it('should format completion interval with time', () => {
+    expect(formatRecurrence({
+      mode: RecurrenceMode.COMPLETION,
+      type: RecurrenceType.INTERVAL,
+      interval: 1,
+      unit: 'weeks',
+      timeOfDay: '09:00',
+    })).toBe('after 1w 09:00');
   });
 });

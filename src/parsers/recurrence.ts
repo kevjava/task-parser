@@ -17,6 +17,21 @@ const UNIT_MAP: Record<string, 'days' | 'weeks' | 'months'> = {
 };
 
 /**
+ * Check if a token is a time in HH:MM format
+ */
+function isTime(token: string): boolean {
+  return /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(token);
+}
+
+/**
+ * Normalize time to HH:MM format (ensures 2-digit hour)
+ */
+function normalizeTime(token: string): string {
+  const [hour, minute] = token.split(':');
+  return `${hour.padStart(2, '0')}:${minute}`;
+}
+
+/**
  * Try to parse recurrence from the beginning of a token array
  *
  * Supported formats:
@@ -40,16 +55,21 @@ export function parseRecurrence(
   const first = tokens[0].toLowerCase();
   const anchor = referenceDate || new Date();
 
-  // Shorthand: daily, weekly, monthly
+  // Shorthand: daily, weekly, monthly (with optional time)
   if (SHORTHAND.includes(first as typeof SHORTHAND[number])) {
-    return {
-      pattern: {
-        mode: RecurrenceMode.CALENDAR,
-        type: first as RecurrenceType,
-        anchor,
-      },
-      tokensConsumed: 1,
+    const pattern: RecurrencePattern = {
+      mode: RecurrenceMode.CALENDAR,
+      type: first as RecurrenceType,
+      anchor,
     };
+
+    // Check for optional time: "daily 09:00"
+    if (tokens.length >= 2 && isTime(tokens[1])) {
+      pattern.timeOfDay = normalizeTime(tokens[1]);
+      return { pattern, tokensConsumed: 2 };
+    }
+
+    return { pattern, tokensConsumed: 1 };
   }
 
   // "every" pattern (calendar mode)
@@ -60,21 +80,26 @@ export function parseRecurrence(
 
     const second = tokens[1].toLowerCase();
 
-    // "every monday" (weekday)
+    // "every monday" or "every monday 16:00" (weekday with optional time)
     if (isWeekday(second)) {
       const dayOfWeek = getWeekdayIndex(second);
-      return {
-        pattern: {
-          mode: RecurrenceMode.CALENDAR,
-          type: RecurrenceType.WEEKLY,
-          dayOfWeek,
-          anchor,
-        },
-        tokensConsumed: 2,
+      const pattern: RecurrencePattern = {
+        mode: RecurrenceMode.CALENDAR,
+        type: RecurrenceType.WEEKLY,
+        dayOfWeek,
+        anchor,
       };
+
+      // Check for optional time: "every monday 16:00"
+      if (tokens.length >= 3 && isTime(tokens[2])) {
+        pattern.timeOfDay = normalizeTime(tokens[2]);
+        return { pattern, tokensConsumed: 3 };
+      }
+
+      return { pattern, tokensConsumed: 2 };
     }
 
-    // "every 2w", "every 3d", "every 1m"
+    // "every 2w", "every 3d", "every 1m" (with optional time)
     const intervalMatch = second.match(/^(\d+)(d|w|m)$/);
     if (intervalMatch) {
       const interval = parseInt(intervalMatch[1], 10);
@@ -84,16 +109,21 @@ export function parseRecurrence(
         throw new ParseError(`Interval must be positive: every ${second}`);
       }
 
-      return {
-        pattern: {
-          mode: RecurrenceMode.CALENDAR,
-          type: RecurrenceType.INTERVAL,
-          interval,
-          unit,
-          anchor,
-        },
-        tokensConsumed: 2,
+      const pattern: RecurrencePattern = {
+        mode: RecurrenceMode.CALENDAR,
+        type: RecurrenceType.INTERVAL,
+        interval,
+        unit,
+        anchor,
       };
+
+      // Check for optional time: "every 2w 09:00"
+      if (tokens.length >= 3 && isTime(tokens[2])) {
+        pattern.timeOfDay = normalizeTime(tokens[2]);
+        return { pattern, tokensConsumed: 3 };
+      }
+
+      return { pattern, tokensConsumed: 2 };
     }
 
     throw new ParseError(`Invalid recurrence pattern: every ${second}`);
@@ -107,7 +137,7 @@ export function parseRecurrence(
 
     const second = tokens[1].toLowerCase();
 
-    // "after 2w", "after 30d", "after 3m"
+    // "after 2w", "after 30d", "after 3m" (with optional time)
     const intervalMatch = second.match(/^(\d+)(d|w|m)$/);
     if (intervalMatch) {
       const interval = parseInt(intervalMatch[1], 10);
@@ -117,15 +147,20 @@ export function parseRecurrence(
         throw new ParseError(`Interval must be positive: after ${second}`);
       }
 
-      return {
-        pattern: {
-          mode: RecurrenceMode.COMPLETION,
-          type: RecurrenceType.INTERVAL,
-          interval,
-          unit,
-        },
-        tokensConsumed: 2,
+      const pattern: RecurrencePattern = {
+        mode: RecurrenceMode.COMPLETION,
+        type: RecurrenceType.INTERVAL,
+        interval,
+        unit,
       };
+
+      // Check for optional time: "after 2w 09:00"
+      if (tokens.length >= 3 && isTime(tokens[2])) {
+        pattern.timeOfDay = normalizeTime(tokens[2]);
+        return { pattern, tokensConsumed: 3 };
+      }
+
+      return { pattern, tokensConsumed: 2 };
     }
 
     throw new ParseError(`Invalid recurrence pattern: after ${second}`);
@@ -152,12 +187,14 @@ export function formatRecurrence(recurrence: RecurrencePattern): string {
     'saturday',
   ];
 
+  const timeSuffix = recurrence.timeOfDay ? ` ${recurrence.timeOfDay}` : '';
+
   // Shorthand types
   if (
     recurrence.type === RecurrenceType.DAILY &&
     recurrence.mode === RecurrenceMode.CALENDAR
   ) {
-    return 'daily';
+    return `daily${timeSuffix}`;
   }
 
   if (
@@ -165,14 +202,14 @@ export function formatRecurrence(recurrence: RecurrencePattern): string {
     recurrence.mode === RecurrenceMode.CALENDAR &&
     recurrence.dayOfWeek !== undefined
   ) {
-    return `every ${WEEKDAY_NAMES[recurrence.dayOfWeek]}`;
+    return `every ${WEEKDAY_NAMES[recurrence.dayOfWeek]}${timeSuffix}`;
   }
 
   if (
     recurrence.type === RecurrenceType.MONTHLY &&
     recurrence.mode === RecurrenceMode.CALENDAR
   ) {
-    return 'monthly';
+    return `monthly${timeSuffix}`;
   }
 
   // Interval patterns
@@ -180,12 +217,12 @@ export function formatRecurrence(recurrence: RecurrencePattern): string {
     const unitMap = { days: 'd', weeks: 'w', months: 'm' };
     const unit = unitMap[recurrence.unit!];
     const prefix = recurrence.mode === RecurrenceMode.CALENDAR ? 'every' : 'after';
-    return `${prefix} ${recurrence.interval}${unit}`;
+    return `${prefix} ${recurrence.interval}${unit}${timeSuffix}`;
   }
 
   // Fallback for weekly without specific day
   if (recurrence.type === RecurrenceType.WEEKLY) {
-    return 'weekly';
+    return `weekly${timeSuffix}`;
   }
 
   // Default
