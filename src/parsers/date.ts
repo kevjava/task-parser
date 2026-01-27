@@ -14,6 +14,11 @@ const WEEKDAYS = [
 ];
 
 /**
+ * Short weekday names (lowercase)
+ */
+const WEEKDAYS_SHORT = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+
+/**
  * Parse a date string into a Date object
  *
  * Supported formats:
@@ -86,11 +91,14 @@ export function getNextWeekday(targetDay: number, fromDate: Date): Date {
 /**
  * Get weekday index from name
  *
- * @param name - Weekday name (case-insensitive)
+ * @param name - Weekday name (case-insensitive, full or abbreviated)
  * @returns Day index (0-6) or -1 if not a weekday
  */
 export function getWeekdayIndex(name: string): number {
-  return WEEKDAYS.indexOf(name.toLowerCase());
+  const lower = name.toLowerCase();
+  const fullIndex = WEEKDAYS.indexOf(lower);
+  if (fullIndex !== -1) return fullIndex;
+  return WEEKDAYS_SHORT.indexOf(lower);
 }
 
 /**
@@ -109,11 +117,12 @@ export function getWeekdayName(index: number): string {
 /**
  * Check if a string is a weekday name
  *
- * @param input - String to check
+ * @param input - String to check (full or abbreviated)
  * @returns true if input is a weekday name
  */
 export function isWeekday(input: string): boolean {
-  return WEEKDAYS.includes(input.toLowerCase());
+  const lower = input.toLowerCase();
+  return WEEKDAYS.includes(lower) || WEEKDAYS_SHORT.includes(lower);
 }
 
 /**

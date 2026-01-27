@@ -32,6 +32,61 @@ describe('parseRecurrence', () => {
     });
   });
 
+  describe('weekdays shorthand', () => {
+    it('should parse "weekdays"', () => {
+      const result = parseRecurrence(['weekdays', 'task'], referenceDate);
+      expect(result).not.toBeNull();
+      expect(result?.pattern.mode).toBe(RecurrenceMode.CALENDAR);
+      expect(result?.pattern.type).toBe(RecurrenceType.WEEKLY);
+      expect(result?.pattern.daysOfWeek).toEqual([1, 2, 3, 4, 5]);
+      expect(result?.tokensConsumed).toBe(1);
+    });
+
+    it('should parse "weekdays 09:00"', () => {
+      const result = parseRecurrence(['weekdays', '09:00', 'task'], referenceDate);
+      expect(result?.pattern.daysOfWeek).toEqual([1, 2, 3, 4, 5]);
+      expect(result?.pattern.timeOfDay).toBe('09:00');
+      expect(result?.tokensConsumed).toBe(2);
+    });
+
+    it('should be case-insensitive', () => {
+      expect(parseRecurrence(['WEEKDAYS', 'task'], referenceDate)?.pattern.daysOfWeek).toEqual([1, 2, 3, 4, 5]);
+    });
+  });
+
+  describe('comma-separated days', () => {
+    it('should parse "Mon,Tue,Thu"', () => {
+      const result = parseRecurrence(['Mon,Tue,Thu', 'task'], referenceDate);
+      expect(result).not.toBeNull();
+      expect(result?.pattern.mode).toBe(RecurrenceMode.CALENDAR);
+      expect(result?.pattern.type).toBe(RecurrenceType.WEEKLY);
+      expect(result?.pattern.daysOfWeek).toEqual([1, 2, 4]);
+      expect(result?.tokensConsumed).toBe(1);
+    });
+
+    it('should parse "Mon,Wed,Fri 09:30"', () => {
+      const result = parseRecurrence(['Mon,Wed,Fri', '09:30', 'task'], referenceDate);
+      expect(result?.pattern.daysOfWeek).toEqual([1, 3, 5]);
+      expect(result?.pattern.timeOfDay).toBe('09:30');
+      expect(result?.tokensConsumed).toBe(2);
+    });
+
+    it('should sort days in order', () => {
+      const result = parseRecurrence(['Fri,Mon,Wed', 'task'], referenceDate);
+      expect(result?.pattern.daysOfWeek).toEqual([1, 3, 5]);
+    });
+
+    it('should handle full day names', () => {
+      const result = parseRecurrence(['Monday,Wednesday,Friday', 'task'], referenceDate);
+      expect(result?.pattern.daysOfWeek).toEqual([1, 3, 5]);
+    });
+
+    it('should handle mixed case', () => {
+      const result = parseRecurrence(['MON,tue,Thu', 'task'], referenceDate);
+      expect(result?.pattern.daysOfWeek).toEqual([1, 2, 4]);
+    });
+  });
+
   describe('every weekday patterns', () => {
     it('should parse "every monday"', () => {
       const result = parseRecurrence(['every', 'monday', 'task'], referenceDate);
@@ -264,5 +319,39 @@ describe('formatRecurrence', () => {
       unit: 'weeks',
       timeOfDay: '09:00',
     })).toBe('after 1w 09:00');
+  });
+
+  it('should format weekdays', () => {
+    expect(formatRecurrence({
+      mode: RecurrenceMode.CALENDAR,
+      type: RecurrenceType.WEEKLY,
+      daysOfWeek: [1, 2, 3, 4, 5],
+    })).toBe('weekdays');
+  });
+
+  it('should format weekdays with time', () => {
+    expect(formatRecurrence({
+      mode: RecurrenceMode.CALENDAR,
+      type: RecurrenceType.WEEKLY,
+      daysOfWeek: [1, 2, 3, 4, 5],
+      timeOfDay: '09:00',
+    })).toBe('weekdays 09:00');
+  });
+
+  it('should format comma-separated days', () => {
+    expect(formatRecurrence({
+      mode: RecurrenceMode.CALENDAR,
+      type: RecurrenceType.WEEKLY,
+      daysOfWeek: [1, 2, 4],
+    })).toBe('Mon,Tue,Thu');
+  });
+
+  it('should format comma-separated days with time', () => {
+    expect(formatRecurrence({
+      mode: RecurrenceMode.CALENDAR,
+      type: RecurrenceType.WEEKLY,
+      daysOfWeek: [1, 3, 5],
+      timeOfDay: '09:30',
+    })).toBe('Mon,Wed,Fri 09:30');
   });
 });

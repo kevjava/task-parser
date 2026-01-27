@@ -5,7 +5,12 @@ import { getWeekdayIndex, isWeekday } from './date';
 /**
  * Shorthand recurrence keywords
  */
-const SHORTHAND = ['daily', 'weekly', 'monthly'] as const;
+const SHORTHAND = ['daily', 'weekly', 'monthly', 'weekdays'] as const;
+
+/**
+ * Weekday indices for "weekdays" keyword (Mon-Fri)
+ */
+const WEEKDAY_INDICES = [1, 2, 3, 4, 5]; // Monday through Friday
 
 /**
  * Parse unit character to unit name
@@ -55,8 +60,26 @@ export function parseRecurrence(
   const first = tokens[0].toLowerCase();
   const anchor = referenceDate || new Date();
 
-  // Shorthand: daily, weekly, monthly (with optional time)
+  // Shorthand: daily, weekly, monthly, weekdays (with optional time)
   if (SHORTHAND.includes(first as typeof SHORTHAND[number])) {
+    // Special handling for "weekdays"
+    if (first === 'weekdays') {
+      const pattern: RecurrencePattern = {
+        mode: RecurrenceMode.CALENDAR,
+        type: RecurrenceType.WEEKLY,
+        daysOfWeek: WEEKDAY_INDICES,
+        anchor,
+      };
+
+      // Check for optional time: "weekdays 09:00"
+      if (tokens.length >= 2 && isTime(tokens[1])) {
+        pattern.timeOfDay = normalizeTime(tokens[1]);
+        return { pattern, tokensConsumed: 2 };
+      }
+
+      return { pattern, tokensConsumed: 1 };
+    }
+
     const pattern: RecurrencePattern = {
       mode: RecurrenceMode.CALENDAR,
       type: first as RecurrenceType,
@@ -64,6 +87,26 @@ export function parseRecurrence(
     };
 
     // Check for optional time: "daily 09:00"
+    if (tokens.length >= 2 && isTime(tokens[1])) {
+      pattern.timeOfDay = normalizeTime(tokens[1]);
+      return { pattern, tokensConsumed: 2 };
+    }
+
+    return { pattern, tokensConsumed: 1 };
+  }
+
+  // Comma-separated weekdays: "Mon,Tue,Thu" or "Mon,Tue,Thu 09:30"
+  const commaDays = first.split(',');
+  if (commaDays.length > 1 && commaDays.every(d => isWeekday(d))) {
+    const daysOfWeek = commaDays.map(d => getWeekdayIndex(d)).sort((a, b) => a - b);
+    const pattern: RecurrencePattern = {
+      mode: RecurrenceMode.CALENDAR,
+      type: RecurrenceType.WEEKLY,
+      daysOfWeek,
+      anchor,
+    };
+
+    // Check for optional time: "Mon,Tue,Thu 09:30"
     if (tokens.length >= 2 && isTime(tokens[1])) {
       pattern.timeOfDay = normalizeTime(tokens[1]);
       return { pattern, tokensConsumed: 2 };
@@ -187,6 +230,8 @@ export function formatRecurrence(recurrence: RecurrencePattern): string {
     'saturday',
   ];
 
+  const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
   const timeSuffix = recurrence.timeOfDay ? ` ${recurrence.timeOfDay}` : '';
 
   // Shorthand types
@@ -197,6 +242,28 @@ export function formatRecurrence(recurrence: RecurrencePattern): string {
     return `daily${timeSuffix}`;
   }
 
+  // Multiple days of week (daysOfWeek array)
+  if (
+    recurrence.type === RecurrenceType.WEEKLY &&
+    recurrence.mode === RecurrenceMode.CALENDAR &&
+    recurrence.daysOfWeek !== undefined &&
+    recurrence.daysOfWeek.length > 0
+  ) {
+    // Check if it's weekdays (Mon-Fri = [1,2,3,4,5])
+    const isWeekdays =
+      recurrence.daysOfWeek.length === 5 &&
+      [1, 2, 3, 4, 5].every(d => recurrence.daysOfWeek!.includes(d));
+
+    if (isWeekdays) {
+      return `weekdays${timeSuffix}`;
+    }
+
+    // Otherwise format as comma-separated: Mon,Tue,Thu
+    const dayNames = recurrence.daysOfWeek.map(d => WEEKDAY_SHORT[d]).join(',');
+    return `${dayNames}${timeSuffix}`;
+  }
+
+  // Single day of week
   if (
     recurrence.type === RecurrenceType.WEEKLY &&
     recurrence.mode === RecurrenceMode.CALENDAR &&
