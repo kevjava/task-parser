@@ -61,7 +61,7 @@ describe('TaskParser', () => {
     });
 
     it('should parse title with bucket', () => {
-      const result = parser.parse('Review docs $ProjectA');
+      const result = parser.parse('Review docs %ProjectA');
       expect(result.title).toBe('Review docs');
       expect('bucket' in result && result.bucket).toBe('ProjectA');
     });
@@ -202,7 +202,7 @@ describe('TaskParser', () => {
         dependencies: [143, 144],
         raw: '',
       });
-      expect(result).toBe('2025-01-10 Deploy app @relay +urgent +backend ~2h $ProjectA window:09:00-17:00 after:143,144');
+      expect(result).toBe('2025-01-10 Deploy app @relay +urgent +backend ~2h %ProjectA window:09:00-17:00 after:143,144');
     });
 
     it('should format recurring task', () => {

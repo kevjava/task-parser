@@ -175,7 +175,7 @@ export function formatChurnTask(task: ChurnParsedTask): string {
 
   // Bucket
   if (task.bucket) {
-    parts.push(`$${task.bucket}`);
+    parts.push(`%${task.bucket}`);
   }
 
   // Window

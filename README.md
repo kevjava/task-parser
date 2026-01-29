@@ -100,7 +100,7 @@ const formatted = TaskParser.formatChurn(churnTask);
 | `YYYY-MM-DD` | ISO date | `2025-01-10` |
 | `today`, `tomorrow` | Relative date | `today Fix bug` |
 | `monday`...`sunday` | Next weekday | `friday Review code` |
-| `$bucket` | Time allocation bucket | `$ProjectA` |
+| `%bucket` | Time allocation bucket | `%ProjectA` |
 | `window:HH:MM-HH:MM` | Valid time range | `window:09:00-17:00` |
 | `after:ID,ID` | Task dependencies | `after:143,144` |
 | `every monday` | Calendar recurrence | `every monday Standup` |

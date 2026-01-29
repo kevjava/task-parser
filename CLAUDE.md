@@ -34,7 +34,7 @@ The `TaskParser` class accepts a `mode` option (`'churn'` or `'tt'`) that contro
 | Syntax | churn | tt |
 |--------|-------|-----|
 | `@project`, `+tag`, `~duration` | shared | shared |
-| `$bucket` | yes | no |
+| `%bucket` | yes | no |
 | `^N` (priority) | no | yes |
 | `window:`, `after:` (deps) | yes | no |
 | `(duration)`, `# remark` | no | yes |
@@ -56,4 +56,4 @@ Input string → tokenize(input, mode) → Token[] → parseXXXTokens() → Pars
 
 - **Malformed patterns become title text** rather than throwing errors (e.g., `~2.5h` doesn't match duration pattern, so it stays in title)
 - **First wins for duplicates** (multiple `@project` uses first one found)
-- **Bucket uses `$`** (not `^`) to avoid conflict with tt's priority syntax
+- **Bucket uses `%`** (not `$` or `^`) to be shell-safe and avoid conflict with tt's priority syntax

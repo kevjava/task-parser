@@ -37,25 +37,25 @@ describe('TaskParser - churn mode specific', () => {
     });
   });
 
-  describe('bucket parsing with $', () => {
+  describe('bucket parsing with %', () => {
     it('should parse simple bucket', () => {
-      const result = parser.parse('Review docs $Admin') as ChurnParsedTask;
+      const result = parser.parse('Review docs %Admin') as ChurnParsedTask;
       expect(result.bucket).toBe('Admin');
     });
 
     it('should parse bucket with underscores', () => {
-      const result = parser.parse('Task $Project_A') as ChurnParsedTask;
+      const result = parser.parse('Task %Project_A') as ChurnParsedTask;
       expect(result.bucket).toBe('Project_A');
     });
 
     it('should parse bucket with dashes', () => {
-      const result = parser.parse('Task $project-x') as ChurnParsedTask;
+      const result = parser.parse('Task %project-x') as ChurnParsedTask;
       expect(result.bucket).toBe('project-x');
     });
 
-    it('should not confuse $ in middle of word', () => {
-      const result = parser.parse('Pay $100 for item') as ChurnParsedTask;
-      expect(result.title).toBe('Pay $100 for item');
+    it('should not confuse % in middle of word', () => {
+      const result = parser.parse('Task is 50% done') as ChurnParsedTask;
+      expect(result.title).toBe('Task is 50% done');
       expect(result.bucket).toBeUndefined();
     });
   });

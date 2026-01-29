@@ -165,9 +165,9 @@ export function tokenize(input: string, mode: ParserMode): TokenizeResult {
       }
     }
 
-    // churn-specific: $bucket
-    if (mode === 'churn' && char === '$') {
-      const bucketMatch = remaining.match(/^\$([a-zA-Z][a-zA-Z0-9_-]*)/);
+    // churn-specific: %bucket
+    if (mode === 'churn' && char === '%') {
+      const bucketMatch = remaining.match(/^%([a-zA-Z][a-zA-Z0-9_-]*)/);
       if (bucketMatch) {
         if (descriptionParts.length > 0) {
           tokens.push({
