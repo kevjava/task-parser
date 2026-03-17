@@ -2,6 +2,14 @@
 export { TaskParser } from './parser';
 export { ParseError, ValidationError, TaskParserError } from './errors';
 
+// Scheduler interface (shared contract for scheduling backends)
+export {
+  ScheduledTask,
+  DailyPlan,
+  CompletionData,
+  TaskScheduler,
+} from './interfaces/scheduler';
+
 // Types
 export {
   ParserMode,
